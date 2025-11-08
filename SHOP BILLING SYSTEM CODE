@@ -1,0 +1,261 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define FILE_NAME "shop.dat"
+
+// Structure to store item details
+struct Item {
+    int itemID;
+    char name[50];
+    float price;
+    int quantity;
+};
+
+// Function Declarations
+void addItem();
+void displayItems();
+int itemExists(int id);
+void updateItem();
+void deleteItem();
+void generateBill();
+
+// Main Function
+int main() {
+    int choice;
+
+    while (1) {
+        printf("\n=============== SHOP BILLING MANAGEMENT SYSTEM ===============\n");
+        printf("1. Add Item\n");
+        printf("2. Display All Items\n");
+        printf("3. Update Item\n");
+        printf("4. Delete Item\n");
+        printf("5. Generate Bill\n");
+        printf("6. Exit\n");
+        printf("===============================================================\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+        case 1:
+            addItem();
+            break;
+        case 2:
+            displayItems();
+            break;
+        case 3:
+            updateItem();
+            break;
+        case 4:
+            deleteItem();
+            break;
+        case 5:
+            generateBill();
+            break;
+        case 6:
+            printf("Exiting system...\n");
+            exit(0);
+        default:
+            printf("Invalid choice! Please try again.\n");
+        }
+    }
+    return 0;
+}
+
+// Function to check if item exists
+int itemExists(int id) {
+    struct Item it;
+    FILE *fp = fopen(FILE_NAME, "rb");
+
+    if (!fp)
+        return 0;
+
+    while (fread(&it, sizeof(it), 1, fp)) {
+        if (it.itemID == id) {
+            fclose(fp);
+            return 1;
+        }
+    }
+    fclose(fp);
+    return 0;
+}
+
+// Function to add an item
+void addItem() {
+    struct Item it;
+    FILE *fp = fopen(FILE_NAME, "ab");
+
+    if (!fp) {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    printf("Enter Item ID: ");
+    scanf("%d", &it.itemID);
+
+    if (itemExists(it.itemID)) {
+        printf("Item already exists!\n");
+        fclose(fp);
+        return;
+    }
+
+    printf("Enter Item Name: ");
+    scanf("%s", it.name);
+    printf("Enter Price: ");
+    scanf("%f", &it.price);
+    printf("Enter Quantity: ");
+    scanf("%d", &it.quantity);
+
+    fwrite(&it, sizeof(it), 1, fp);
+    fclose(fp);
+
+    printf("Item added successfully!\n");
+}
+
+// Function to display all items
+void displayItems() {
+    struct Item it;
+    FILE *fp = fopen(FILE_NAME, "rb");
+
+    if (!fp) {
+        printf("No records found!\n");
+        return;
+    }
+
+    printf("\n=================== ITEM LIST ===================\n");
+    printf("%-10s %-20s %-10s %-10s\n", "ItemID", "Name", "Price", "Qty");
+    printf("=================================================\n");
+
+    while (fread(&it, sizeof(it), 1, fp)) {
+        printf("%-10d %-20s %-10.2f %-10d\n",
+               it.itemID, it.name, it.price, it.quantity);
+    }
+
+    fclose(fp);
+}
+
+// Function to update an item
+void updateItem() {
+    int id, found = 0;
+    struct Item it;
+    FILE *fp = fopen(FILE_NAME, "rb");
+    FILE *temp = fopen("temp.dat", "wb");
+
+    if (!fp) {
+        printf("No records found!\n");
+        return;
+    }
+
+    printf("Enter Item ID to update: ");
+    scanf("%d", &id);
+
+    while (fread(&it, sizeof(it), 1, fp)) {
+        if (it.itemID == id) {
+            found = 1;
+            printf("Enter new name: ");
+            scanf("%s", it.name);
+            printf("Enter new price: ");
+            scanf("%f", &it.price);
+            printf("Enter new quantity: ");
+            scanf("%d", &it.quantity);
+        }
+        fwrite(&it, sizeof(it), 1, temp);
+    }
+
+    fclose(fp);
+    fclose(temp);
+
+    remove(FILE_NAME);
+    rename("temp.dat", FILE_NAME);
+
+    if (found)
+        printf("Item updated successfully!\n");
+    else
+        printf("Item not found!\n");
+}
+
+// Function to delete an item
+void deleteItem() {
+    int id, found = 0;
+    struct Item it;
+    FILE *fp = fopen(FILE_NAME, "rb");
+    FILE *temp = fopen("temp.dat", "wb");
+
+    if (!fp) {
+        printf("No records found!\n");
+        return;
+    }
+
+    printf("Enter Item ID to delete: ");
+    scanf("%d", &id);
+
+    while (fread(&it, sizeof(it), 1, fp)) {
+        if (it.itemID == id) {
+            found = 1;
+            continue;
+        }
+        fwrite(&it, sizeof(it), 1, temp);
+    }
+
+    fclose(fp);
+    fclose(temp);
+
+    remove(FILE_NAME);
+    rename("temp.dat", FILE_NAME);
+
+    if (found)
+        printf("Item deleted successfully!\n");
+    else
+        printf("Item not found!\n");
+}
+
+// Function to generate bill
+void generateBill() {
+    int id, qty;
+    float total = 0;
+    char choice;
+    struct Item it;
+    FILE *fp;
+
+    printf("\n==================== BILL GENERATION ====================\n");
+
+    do {
+        printf("Enter Item ID: ");
+        scanf("%d", &id);
+
+        fp = fopen(FILE_NAME, "rb");
+        int found = 0;
+
+        while (fread(&it, sizeof(it), 1, fp)) {
+            if (it.itemID == id) {
+                found = 1;
+                printf("Enter Quantity: ");
+                scanf("%d", &qty);
+
+                if (qty > it.quantity) {
+                    printf("Not enough stock!\n");
+                } else {
+                    float cost = qty * it.price;
+                    total += cost;
+                    printf("Item: %s | Price: %.2f | Qty: %d | Cost: %.2f\n",
+                           it.name, it.price, qty, cost);
+                }
+                break;
+            }
+        }
+
+        fclose(fp);
+
+        if (!found) {
+            printf("Item not found!\n");
+        }
+
+        printf("Add more items? (y/n): ");
+        scanf(" %c", &choice);
+
+    } while (choice == 'y' || choice == 'Y');
+
+    printf("\n==================== FINAL BILL ====================\n");
+    printf("Total Amount: %.2f\n", total);
+    printf("====================================================\n");
+}
